@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Euclid Lensing: Image Search</title>
+  <style>
+    /* ---- base ---- */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0a0e1a;
+      color: #d0d8f0;
+      min-height: 100vh;
+      padding: 0 0 60px;
+    }
+
+    /* ---- header ---- */
+    header {
+      background: linear-gradient(135deg, #0d1530 0%, #1a2550 100%);
+      border-bottom: 1px solid #2a3a6a;
+      padding: 28px 40px 24px;
+    }
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #a8c8ff;
+    }
+    header p {
+      margin-top: 4px;
+      font-size: 0.85rem;
+      color: #6a80b0;
+    }
+
+    /* ---- search panel ---- */
+    .search-panel {
+      max-width: 860px;
+      margin: 36px auto 0;
+      padding: 0 20px;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    #search-input {
+      flex: 1;
+      min-width: 200px;
+      padding: 12px 16px;
+      background: #111827;
+      border: 1px solid #2a3a6a;
+      border-radius: 8px;
+      color: #d0d8f0;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    #search-input:focus { border-color: #5588ff; }
+    #search-input::placeholder { color: #3a4a6a; }
+
+    #search-type {
+      padding: 12px 14px;
+      background: #111827;
+      border: 1px solid #2a3a6a;
+      border-radius: 8px;
+      color: #a0b0d8;
+      font-size: 0.9rem;
+      cursor: pointer;
+      outline: none;
+    }
+    #search-type:focus { border-color: #5588ff; }
+
+    #search-btn {
+      padding: 12px 26px;
+      background: #2255cc;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #search-btn:hover { background: #3366ee; }
+
+    .tolerance-row {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.82rem;
+      color: #6a80b0;
+    }
+    #tolerance-input {
+      width: 90px;
+      padding: 6px 10px;
+      background: #111827;
+      border: 1px solid #2a3a6a;
+      border-radius: 6px;
+      color: #a0b0d8;
+      font-size: 0.82rem;
+      outline: none;
+    }
+    #tolerance-input:focus { border-color: #5588ff; }
+
+    .hint {
+      margin-top: 14px;
+      font-size: 0.8rem;
+      color: #4a5a80;
+      line-height: 1.6;
+    }
+    .hint code {
+      background: #1a2035;
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: #88aaff;
+    }
+
+    /* ---- status bar ---- */
+    #status {
+      max-width: 860px;
+      margin: 18px auto 0;
+      padding: 0 20px;
+      font-size: 0.85rem;
+      color: #5a7aaa;
+      min-height: 20px;
+    }
+
+    /* ---- results grid ---- */
+    #results {
+      max-width: 1200px;
+      margin: 24px auto 0;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 24px;
+    }
+
+    /* ---- card ---- */
+    .card {
+      background: #111827;
+      border: 1px solid #1e2d4e;
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.15s;
+      cursor: pointer;
+    }
+    .card:hover { border-color: #4466cc; transform: translateY(-2px); }
+
+    .card-image {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: contain;
+      background: #060a12;
+      display: block;
+    }
+    .no-image-placeholder {
+      width: 100%;
+      aspect-ratio: 1;
+      background: #060a12;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #2a3a5a;
+      font-size: 0.85rem;
+    }
+
+    .card-body { padding: 16px 18px; }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #88aaff;
+      margin-bottom: 10px;
+      word-break: break-all;
+    }
+
+    .card-meta {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      column-gap: 12px;
+      row-gap: 4px;
+      font-size: 0.8rem;
+    }
+    .meta-label { color: #4a6090; }
+    .meta-value { color: #b8c8e8; word-break: break-all; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .badge-AA { background: #1a4020; color: #66dd88; }
+    .badge-A  { background: #1a3020; color: #44cc66; }
+    .badge-B  { background: #2a2a10; color: #cccc44; }
+    .badge-C  { background: #2a1010; color: #cc6644; }
+    .badge-new { background: #1a2a50; color: #6699ff; margin-left: 6px; }
+
+    /* ---- modal ---- */
+    #modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #modal-overlay.active { display: flex; }
+
+    #modal {
+      background: #111827;
+      border: 1px solid #2a3a6a;
+      border-radius: 14px;
+      max-width: 960px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    #modal-header {
+      padding: 18px 22px 14px;
+      border-bottom: 1px solid #1e2d4e;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    #modal-objname {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #88aaff;
+      word-break: break-all;
+    }
+    #modal-close {
+      background: none;
+      border: 1px solid #2a3a6a;
+      border-radius: 6px;
+      color: #6a80b0;
+      font-size: 1.1rem;
+      line-height: 1;
+      padding: 4px 10px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    #modal-close:hover { border-color: #cc4444; color: #ff6666; }
+
+    #modal-body {
+      display: flex;
+      flex-direction: row;
+      gap: 0;
+    }
+
+    #modal-img-wrap {
+      flex: 0 0 50%;
+      background: #060a12;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+    }
+    #modal-img {
+      max-width: 100%;
+      max-height: 70vh;
+      object-fit: contain;
+      display: block;
+    }
+    #modal-no-image {
+      color: #2a3a5a;
+      font-size: 0.9rem;
+    }
+
+    #modal-info {
+      flex: 1;
+      padding: 20px 22px;
+      overflow-y: auto;
+    }
+
+    .info-section { margin-bottom: 18px; }
+    .info-section h3 {
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #3a5080;
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #1a2540;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      column-gap: 14px;
+      row-gap: 6px;
+      font-size: 0.85rem;
+    }
+    .info-label { color: #4a6090; }
+    .info-value { color: #c0d0ee; word-break: break-all; }
+
+    .notes-box {
+      background: #0d1525;
+      border: 1px solid #1e2d4e;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 0.83rem;
+      color: #8898b8;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 640px) {
+      #modal-body { flex-direction: column; }
+      #modal-img-wrap { flex: none; }
+    }
+
+    /* ---- empty state ---- */
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      color: #3a4a6a;
+    }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Euclid Strong Lensing: Image Search</h1>
+  <p>Search the candidate catalogue by object ID, RA, or Dec</p>
+</header>
+
+<div class="search-panel">
+  <div class="search-row">
+    <input id="search-input" type="text" placeholder="e.g. EUCLJ041231, 63.132, -47.994 …" autocomplete="off" />
+    <select id="search-type">
+      <option value="auto">Auto-detect</option>
+      <option value="objname">Object ID</option>
+      <option value="ra">RA (deg)</option>
+      <option value="dec">Dec (deg)</option>
+      <option value="coords">RA,Dec (deg)</option>
+    </select>
+    <button id="search-btn">Search</button>
+  </div>
+
+  <div class="tolerance-row" id="tolerance-row">
+    <label for="tolerance-input">Coordinate tolerance:</label>
+    <input id="tolerance-input" type="number" value="0.01" min="0" step="0.001" />
+    <span>degrees</span>
+  </div>
+
+  <p class="hint">
+    Search by <code>object ID</code> (partial match), <code>RA</code>, <code>Dec</code>, or <code>RA,Dec</code> pair.
+    For coordinates, results within the tolerance radius are returned.
+  </p>
+</div>
+
+<div id="status"></div>
+<div id="results"></div>
+
+<!-- Modal -->
+<div id="modal-overlay">
+  <div id="modal">
+    <div id="modal-header">
+      <div id="modal-objname"></div>
+      <button id="modal-close">✕</button>
+    </div>
+    <div id="modal-body">
+      <div id="modal-img-wrap">
+        <img id="modal-img" src="" alt="" style="display:none;" />
+        <div id="modal-no-image" style="display:none;">No image available</div>
+      </div>
+      <div id="modal-info"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const searchInput = document.getElementById('search-input');
+  const searchType  = document.getElementById('search-type');
+  const searchBtn   = document.getElementById('search-btn');
+  const toleranceInput = document.getElementById('tolerance-input');
+  const toleranceRow   = document.getElementById('tolerance-row');
+  const statusEl    = document.getElementById('status');
+  const resultsEl   = document.getElementById('results');
+  const overlay     = document.getElementById('modal-overlay');
+  const modalImg    = document.getElementById('modal-img');
+  const modalNoImg  = document.getElementById('modal-no-image');
+  const modalObjname = document.getElementById('modal-objname');
+  const modalInfo   = document.getElementById('modal-info');
+  const modalClose  = document.getElementById('modal-close');
+
+  // Show/hide tolerance row based on search type
+  searchType.addEventListener('change', () => {
+    const t = searchType.value;
+    toleranceRow.style.display = (t === 'objname') ? 'none' : 'flex';
+  });
+
+  function doSearch() {
+    const q = searchInput.value.trim();
+    if (!q) return;
+    const type = searchType.value;
+    const tol  = toleranceInput.value || '0.01';
+
+    statusEl.textContent = 'Searching…';
+    resultsEl.innerHTML  = '';
+
+    const url = `/search?q=${encodeURIComponent(q)}&type=${type}&tolerance=${tol}`;
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) {
+          statusEl.textContent = data.error;
+          return;
+        }
+        const res = data.results || [];
+        const matchedOn = data.matched_on || '';
+        statusEl.textContent = `${res.length} result${res.length !== 1 ? 's' : ''} found` +
+          (matchedOn ? ` · matched on ${matchedOn}` : '');
+        renderResults(res);
+      })
+      .catch(() => { statusEl.textContent = 'Search failed. Is the server running?'; });
+  }
+
+  searchBtn.addEventListener('click', doSearch);
+  searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+  // ---- render cards ----
+  function renderResults(results) {
+    if (!results.length) {
+      resultsEl.innerHTML = `<div class="empty-state"><div class="icon">🔭</div><div>No objects found matching your query.</div></div>`;
+      return;
+    }
+    resultsEl.innerHTML = '';
+    results.forEach(obj => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        ${obj.has_image
+          ? `<img class="card-image" src="/image/${encodeURIComponent(obj.cutoutname)}.png" alt="${obj.objname}" loading="lazy" />`
+          : `<div class="no-image-placeholder">No image</div>`
+        }
+        <div class="card-body">
+          <div class="card-title">${obj.objname || obj.cutoutname}</div>
+          <div class="card-meta">
+            <span class="meta-label">RA</span>
+            <span class="meta-value">${fmt(obj.ra, 6)}°</span>
+            <span class="meta-label">Dec</span>
+            <span class="meta-value">${fmt(obj.dec, 6)}°</span>
+            <span class="meta-label">Grade</span>
+            <span class="meta-value">
+              <span class="badge badge-${obj.grade || ''}">${obj.grade || '—'}</span>
+              ${obj.new === 'Y' ? '<span class="badge badge-new">NEW</span>' : ''}
+            </span>
+            <span class="meta-label">Score</span>
+            <span class="meta-value">${fmt(obj.rawscore, 2)}</span>
+            ${obj._distance ? `<span class="meta-label">Distance</span><span class="meta-value">${obj._distance}°</span>` : ''}
+          </div>
+        </div>`;
+      card.addEventListener('click', () => openModal(obj));
+      resultsEl.appendChild(card);
+    });
+  }
+
+  function fmt(val, decimals) {
+    const n = parseFloat(val);
+    return isNaN(n) ? (val || '—') : n.toFixed(decimals);
+  }
+
+  // ---- modal ----
+  function openModal(obj) {
+    modalObjname.innerHTML = `
+      ${obj.objname || obj.cutoutname}
+      <span class="badge badge-${obj.grade || ''}" style="margin-left:10px;">${obj.grade || '—'}</span>
+      ${obj.new === 'Y' ? '<span class="badge badge-new">NEW</span>' : ''}`;
+
+    if (obj.has_image) {
+      modalImg.src = `/image/${encodeURIComponent(obj.cutoutname)}.png`;
+      modalImg.alt = obj.objname;
+      modalImg.style.display = 'block';
+      modalNoImg.style.display = 'none';
+    } else {
+      modalImg.style.display = 'none';
+      modalNoImg.style.display = 'flex';
+    }
+
+    modalInfo.innerHTML = `
+      <div class="info-section">
+        <h3>Identification</h3>
+        <div class="info-grid">
+          <span class="info-label">Object name</span><span class="info-value">${obj.objname || '—'}</span>
+          <span class="info-label">Cutout name</span><span class="info-value">${obj.cutoutname || '—'}</span>
+          <span class="info-label">Index</span><span class="info-value">${obj.index}</span>
+        </div>
+      </div>
+      <div class="info-section">
+        <h3>Coordinates</h3>
+        <div class="info-grid">
+          <span class="info-label">RA</span><span class="info-value">${fmt(obj.ra, 8)}°</span>
+          <span class="info-label">Dec</span><span class="info-value">${fmt(obj.dec, 8)}°</span>
+          ${obj._distance ? `<span class="info-label">Distance</span><span class="info-value">${obj._distance}°</span>` : ''}
+        </div>
+      </div>
+      <div class="info-section">
+        <h3>Photometry</h3>
+        <div class="info-grid">
+          <span class="info-label">VIS</span><span class="info-value">${fmt(obj.VIS, 4)}</span>
+          <span class="info-label">Y</span><span class="info-value">${fmt(obj.Y, 4)}</span>
+          <span class="info-label">J</span><span class="info-value">${fmt(obj.J, 4)}</span>
+          <span class="info-label">H</span><span class="info-value">${fmt(obj.H, 4)}</span>
+        </div>
+      </div>
+      <div class="info-section">
+        <h3>Classification</h3>
+        <div class="info-grid">
+          <span class="info-label">Grade</span>
+          <span class="info-value"><span class="badge badge-${obj.grade || ''}">${obj.grade || '—'}</span></span>
+          <span class="info-label">New candidate</span>
+          <span class="info-value">${obj.new === 'Y' ? '<span class="badge badge-new">YES</span>' : 'No'}</span>
+          <span class="info-label">Raw score</span>
+          <span class="info-value">${fmt(obj.rawscore, 4)}</span>
+        </div>
+      </div>
+      ${obj.notes ? `
+      <div class="info-section">
+        <h3>Notes</h3>
+        <div class="notes-box">${obj.notes}</div>
+      </div>` : ''}`;
+
+    overlay.classList.add('active');
+  }
+
+  function closeModal() { overlay.classList.remove('active'); }
+  modalClose.addEventListener('click', closeModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>

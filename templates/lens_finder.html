@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% block title %}Lens Finder | Euclid Lensing{% endblock %}
+{% block content %}
+<section class="section" style="padding: 24px 20px 18px;">
+  <h2>Lens Finder</h2>
+  <p>Search the Euclid lens candidate catalogue by object ID, RA, Dec, or coordinate pair.</p>
+  <div class="search-panel" style="margin-top: 18px;">
+    <div class="search-row" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+      <input id="search-input" type="text" placeholder="e.g. EUCLJ041231, 63.132, -47.994 …" autocomplete="off" style="flex:1; min-width:200px; padding:12px 16px; background:#0b1426; border:1px solid #2a3a6a; border-radius:10px; color:#eef2ff; outline:none;" />
+      <select id="search-type" style="padding:12px 14px; background:#0b1426; border:1px solid #2a3a6a; border-radius:10px; color:#c8d4ee; font-size:0.95rem;">
+        <option value="auto">Auto-detect</option>
+        <option value="objname">Object ID</option>
+        <option value="ra">RA (deg)</option>
+        <option value="dec">Dec (deg)</option>
+        <option value="coords">RA,Dec (deg)</option>
+      </select>
+      <button id="search-btn" style="padding:12px 26px; background:#3d6cff; border:none; border-radius:10px; color:#fff; font-weight:700; cursor:pointer; transition:background 0.2s;">Search</button>
+    </div>
+    <div class="tolerance-row" id="tolerance-row" style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; color:#9db0d8; font-size:0.92rem;">
+      <label for="tolerance-input">Coordinate tolerance:</label>
+      <input id="tolerance-input" type="number" value="0.01" min="0" step="0.001" style="width:100px; padding:8px 10px; background:#0b1426; border:1px solid #2a3a6a; border-radius:8px; color:#eef2ff; outline:none;" />
+      <span>degrees</span>
+    </div>
+    <p class="hint" style="margin-top:14px; color:#9db0d8; font-size:0.95rem; max-width:780px;">
+      Search by <code style="background:#152041; padding:2px 5px; border-radius:4px;">object ID</code> (partial match), <code style="background:#152041; padding:2px 5px; border-radius:4px;">RA</code>, <code style="background:#152041; padding:2px 5px; border-radius:4px;">Dec</code>, or <code style="background:#152041; padding:2px 5px; border-radius:4px;">RA,Dec</code> pair.
+    </p>
+  </div>
+</section>
+<div id="status" style="margin: 0 auto 16px; max-width:1200px; color:#94a4d1; font-size:0.95rem;"></div>
+<div id="results" style="max-width:1200px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:24px;"></div>
+<div id="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:100; align-items:center; justify-content:center; padding:20px;">
+  <div id="modal" style="background:#0b1426; border:1px solid #2a3a6a; border-radius:18px; max-width:960px; width:100%; max-height:90vh; overflow-y:auto;">
+    <div id="modal-header" style="padding:18px 22px 14px; border-bottom:1px solid #1c2c55; display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
+      <div id="modal-objname" style="font-size:1.05rem; font-weight:700; color:#d6e4ff;"></div>
+      <button id="modal-close" style="background:none; border:1px solid #2a3a6a; border-radius:8px; color:#a1b1d6; font-size:1.1rem; padding:6px 10px; cursor:pointer;">✕</button>
+    </div>
+    <div id="modal-body" style="display:flex; flex-wrap:wrap; gap:0;">
+      <div id="modal-img-wrap" style="flex:0 0 50%; min-height:280px; display:flex; align-items:center; justify-content:center; background:#081122;">
+        <img id="modal-img" src="" alt="" style="display:none; max-width:100%; max-height:70vh; object-fit:contain;" />
+        <div id="modal-no-image" style="display:none; color:#5c6d93; font-size:0.95rem;">No image available</div>
+      </div>
+      <div id="modal-info" style="flex:1; min-width:280px; padding:20px 22px; overflow-y:auto; color:#c8d4ee;"></div>
+    </div>
+  </div>
+</div>
+<script>
+  const searchInput = document.getElementById('search-input');
+  const searchType = document.getElementById('search-type');
+  const searchBtn = document.getElementById('search-btn');
+  const toleranceInput = document.getElementById('tolerance-input');
+  const toleranceRow = document.getElementById('tolerance-row');
+  const statusEl = document.getElementById('status');
+  const resultsEl = document.getElementById('results');
+  const overlay = document.getElementById('modal-overlay');
+  const modalImg = document.getElementById('modal-img');
+  const modalNoImg = document.getElementById('modal-no-image');
+  const modalObjname = document.getElementById('modal-objname');
+  const modalInfo = document.getElementById('modal-info');
+  const modalClose = document.getElementById('modal-close');
+
+  searchType.addEventListener('change', () => {
+    toleranceRow.style.display = searchType.value === 'objname' ? 'none' : 'flex';
+  });
+
+  function doSearch() {
+    const q = searchInput.value.trim();
+    if (!q) return;
+    const type = searchType.value;
+    const tol = toleranceInput.value || '0.01';
+    statusEl.textContent = 'Searching…';
+    resultsEl.innerHTML = '';
+    fetch(`/search?q=${encodeURIComponent(q)}&type=${type}&tolerance=${tol}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) {
+          statusEl.textContent = data.error;
+          return;
+        }
+        const res = data.results || [];
+        const matchedOn = data.matched_on || '';
+        statusEl.textContent = `${res.length} result${res.length !== 1 ? 's' : ''} found${matchedOn ? ' · matched on ' + matchedOn : ''}`;
+        renderResults(res);
+      })
+      .catch(() => {
+        statusEl.textContent = 'Search failed. Is the server running?';
+      });
+  }
+
+  searchBtn.addEventListener('click', doSearch);
+  searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+  function renderResults(results) {
+    if (!results.length) {
+      resultsEl.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:60px 20px; color:#5b6f95;"><div style="font-size:3rem; margin-bottom:12px;">🔭</div><div>No objects found matching your query.</div></div>`;
+      return;
+    }
+    resultsEl.innerHTML = '';
+    results.forEach(obj => {
+      const card = document.createElement('div');
+      card.style.cssText = 'background:#0b1426; border:1px solid rgba(255,255,255,0.08); border-radius:16px; overflow:hidden; cursor:pointer; transition:transform 0.15s, border-color 0.2s;';
+      card.onmouseover = () => card.style.transform = 'translateY(-2px)';
+      card.onmouseout = () => card.style.transform = 'translateY(0)';
+      card.innerHTML = `
+        ${obj.has_image ? `<img style="width:100%; aspect-ratio:1; object-fit:contain; background:#07101f;" src="/image/${encodeURIComponent(obj.cutoutname)}.png" alt="${obj.objname || obj.cutoutname}" loading="lazy" />` : `<div style="width:100%; aspect-ratio:1; display:flex; align-items:center; justify-content:center; background:#07101f; color:#5b6f95; font-size:0.95rem;">No image</div>`}
+        <div style="padding:16px 18px;">
+          <div style="font-size:1rem; font-weight:700; color:#d8e6ff; margin-bottom:10px;">${obj.objname || obj.cutoutname}</div>
+          <div style="display:grid; grid-template-columns:max-content 1fr; gap:6px 12px; font-size:0.86rem; color:#c4cfe0;">
+            <span style="color:#7f95c6;">RA</span><span>${fmt(obj.ra, 6)}°</span>
+            <span style="color:#7f95c6;">Dec</span><span>${fmt(obj.dec, 6)}°</span>
+            <span style="color:#7f95c6;">Grade</span><span><span style="display:inline-block; padding:3px 8px; border-radius:999px; background:#1e2e5a; color:#9eb4ff;">${obj.grade || '—'}</span>${obj.new === 'Y' ? '<span style="display:inline-block; margin-left:6px; padding:3px 8px; border-radius:999px; background:#1f3b61; color:#94c7ff;">NEW</span>' : ''}</span>
+            <span style="color:#7f95c6;">Score</span><span>${fmt(obj.rawscore, 2)}</span>
+            ${obj._distance ? `<span style="color:#7f95c6;">Distance</span><span>${obj._distance}°</span>` : ''}
+          </div>
+        </div>`;
+      card.addEventListener('click', () => openModal(obj));
+      resultsEl.appendChild(card);
+    });
+  }
+
+  function fmt(value, decimals) {
+    const n = parseFloat(value);
+    return Number.isFinite(n) ? n.toFixed(decimals) : (value || '—');
+  }
+
+  function openModal(obj) {
+    modalObjname.innerHTML = `${obj.objname || obj.cutoutname} ${obj.grade ? `<span style="display:inline-block; margin-left:10px; padding:3px 8px; border-radius:999px; background:#1a2c56; color:#a8caff;">${obj.grade}</span>` : ''} ${obj.new === 'Y' ? '<span style="display:inline-block; margin-left:10px; padding:3px 8px; border-radius:999px; background:#1a355e; color:#90c8ff;">NEW</span>' : ''}`;
+    if (obj.has_image) {
+      modalImg.src = `/image/${encodeURIComponent(obj.cutoutname)}.png`;
+      modalImg.alt = obj.objname || obj.cutoutname;
+      modalImg.style.display = 'block';
+      modalNoImg.style.display = 'none';
+    } else {
+      modalImg.style.display = 'none';
+      modalNoImg.style.display = 'flex';
+    }
+    modalInfo.innerHTML = `
+      <div style="margin-bottom:18px;"><h3 style="font-size:0.88rem; letter-spacing:0.1em; text-transform:uppercase; color:#7ea4ff; margin-bottom:10px;">Identification</h3><div style="display:grid; grid-template-columns:max-content 1fr; gap:6px 10px; color:#d6dff9;"><span style="color:#8da8d8;">Object</span><span>${obj.objname || '—'}</span><span style="color:#8da8d8;">Cutout</span><span>${obj.cutoutname || '—'}</span><span style="color:#8da8d8;">Index</span><span>${obj.index || '—'}</span></div></div>
+      <div style="margin-bottom:18px;"><h3 style="font-size:0.88rem; letter-spacing:0.1em; text-transform:uppercase; color:#7ea4ff; margin-bottom:10px;">Coordinates</h3><div style="display:grid; grid-template-columns:max-content 1fr; gap:6px 10px; color:#d6dff9;"><span style="color:#8da8d8;">RA</span><span>${fmt(obj.ra, 8)}°</span><span style="color:#8da8d8;">Dec</span><span>${fmt(obj.dec, 8)}°</span>${obj._distance ? `<span style="color:#8da8d8;">Distance</span><span>${obj._distance}°</span>` : ''}</div></div>
+      <div style="margin-bottom:18px;"><h3 style="font-size:0.88rem; letter-spacing:0.1em; text-transform:uppercase; color:#7ea4ff; margin-bottom:10px;">Photometry</h3><div style="display:grid; grid-template-columns:max-content 1fr; gap:6px 10px; color:#d6dff9;"><span style="color:#8da8d8;">VIS</span><span>${fmt(obj.VIS, 4)}</span><span style="color:#8da8d8;">Y</span><span>${fmt(obj.Y, 4)}</span><span style="color:#8da8d8;">J</span><span>${fmt(obj.J, 4)}</span><span style="color:#8da8d8;">H</span><span>${fmt(obj.H, 4)}</span></div></div>
+      <div style="margin-bottom:18px;"><h3 style="font-size:0.88rem; letter-spacing:0.1em; text-transform:uppercase; color:#7ea4ff; margin-bottom:10px;">Notes</h3><div style="background:#071125; border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:12px; color:#c2d0ea;">${obj.notes || 'No additional notes.'}</div></div>`;
+    overlay.style.display = 'flex';
+  }
+
+  function closeModal() { overlay.style.display = 'none'; }
+  modalClose.addEventListener('click', closeModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+{% endblock %}

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Euclid Lensing Website{% endblock %}</title>
+  <script src="https://polyfill.io"></script>
+  <script id="MathJax-script" async src="https://jsdelivr.net"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #061023;
+      color: #e5ecff;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+    .site-shell {
+      max-width: 90%;
+      margin: 0 auto;
+      padding: 18px 20px 40px;
+    }
+    header {
+      padding: 220px 0 14px;
+    }
+    .title-header {
+      font-size: clamp(3rem, 2.5vw, 2.8rem);
+      font-weight: 400;
+      letter-spacing: -0.03em;
+      margin-top: 20px;
+      margin-bottom: 28px;
+      color: #516bae;
+      text-align: center;
+
+    }
+    .site-title {
+      font-size: clamp(4rem, 2.5vw, 2.8rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-top: 20px;
+      margin-bottom: 28px;
+      color: #c8d8ff;
+      text-align: center;
+    }
+    .site-subtitle {
+      color: #9bb0d8;
+      margin-top: 4px;
+      font-size: 2rem;
+      text-align: center;
+      
+    }
+    .affiliations {
+        text-align: center;
+        font-size: 2rem;
+    }
+    .top-nav {
+      width: 100%;
+      height: 6rem;
+      background: rgba(5, 12, 29, 0.94);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding: 12px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    nav {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin: 0;
+      padding: 1rem 0 1rem;
+    }
+    .nav-link {
+      color: #c0d0ee;
+      padding: 10px 16px;
+      border-radius: 999px;
+      transition: background 0.2s, color 0.2s;
+      font-weight: 600;
+    }
+    .nav-link:hover {
+      background: rgba(255,255,255,0.08);
+    }
+    .nav-link.active {
+      color: #fff;
+      background: rgba(85, 136, 255, 0.18);
+      box-shadow: 0 10px 25px rgba(29, 57, 127, 0.16);
+    }
+    .page-content {
+      min-height: 72vh;
+    }
+    .section {
+      margin-bottom: 36px;
+      padding: 24px 50px;
+      backdrop-filter: blur(8px);
+    }
+    .section h2 {
+      margin-top: 0;
+      font-size: 1.35rem;
+      color: #e3e9ff;
+    }
+    .section img {
+        text-align: center;
+        margin: 2rem auto 3rem;
+
+    }
+    .section p,
+    .section li {
+      color: #c8d4ee;
+      font-size: 1.5rem;
+    }
+    .paper-overview {
+        margin-top: -40px;
+    }
+    .paper-overview h2 {
+        font-size: 2rem;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .paper-overview p {
+        text-align: center;
+        margin-bottom: 4rem;
+    }
+    .authors {
+      display: grid;
+      gap: 10px;
+      margin: 18px 0 0;
+      font-size: 0.98rem;
+      color: #d8e0ff;
+    }
+    .authors span {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .authors strong {
+      color: #fff;
+    }
+    .abstract {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .paper-frame {
+      width: 85%;
+      margin: auto;
+      min-height: 580px;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      overflow: hidden;
+      background: #091325;
+    }
+    .paper-frame iframe {
+      width: 100%;
+      height: 1080px;
+      border: none;
+    }
+    .callout {
+      width: 85%;
+      border-left: 4px solid #5f8fff;
+      padding-left: 14px;
+      color: #d4ddff;
+      margin: 16px auto 50px;
+    }
+    .latex {
+      font-family: 'Latin Modern Math', 'Times New Roman', serif;
+      color: #f2f6ff;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: 18px;
+      border-radius: 14px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+    .footer {
+      margin-top: 16px;
+      color: #7a8cbc;
+      font-size: 1.2rem;
+      margin-bottom: 6rem;
+      text-align: center;
+    
+    }
+    @media (max-width: 680px) {
+      .site-shell { padding: 14px 16px 32px; }
+      nav { justify-content: center; }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="top-nav">
+    <nav>
+      <a class="nav-link {% if active_page == 'research' %}active{% endif %}" href="{{ url_for('research') }}">Research</a>
+      <a class="nav-link {% if active_page == 'lens_finder' %}active{% endif %}" href="{{ url_for('lens_finder') }}">Lens Finder</a>
+      <a class="nav-link" target="_blank" href="{{ url_for('cooray_group') }}">Cooray Group</a>
+    </nav>
+  </div>
+  <div class="site-shell">
+    {% if active_page != 'lens_finder' %}
+    <header>
+      <div class="title-header">Euclid Quick Data Release (Q1)</div>
+      <div class="site-title">AgileLens: A scalable CNN-based pipeline for strong gravitational lens identification</div>
+      <div class="site-subtitle"><i><p>Xinmei Xu<sup>1</sup>, Roger Chen<sup>1</sup>, Thomas Li<sup>1</sup>, Asantha Cooray<sup>1</sup>, and et al.</p></i></div>
+      <div class="affiliations"><sup>1</sup> University of California, Irvine</div>
+    </header>
+    {% endif %}
+    <main class="page-content">
+      {% block content %}{% endblock %}
+    </main>
+    <div class="footer">© 2026 X. Xu et al. · AgileLens  · University of California, Irvine</div>
+  </div>
+</body>
+</html>

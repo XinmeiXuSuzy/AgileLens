@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Research | Euclid Lensing{% endblock %}
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js" integrity="sha512-s/6cBZkxEXm5gYVXGTv6ac10d1pBUlA2Dz7P8f3QbmV7JtxrJ/7oSPI6sUTq4px9+nu3zwkPpVIEb2gUe6q3KQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['\\(', '\\)'], ['$', '$']]
+  }
+};
+</script>
+
+<script
+  id="MathJax-script"
+  async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
+
+{% endblock %}
+{% block content %}
+<section class="section abstract">
+  <h2></h2>
+  <img src="{{ url_for('static', filename='images/vgg16.png') }}" width="100%">
+  
+  <p>
+    We present an end-to-end, iterative pipeline for efficient identification of strong galaxy--galaxy lensing systems, applied to the Euclid Q1 imaging data. Starting from VIS catalogues, we reject point sources, apply a magnitude cut (\( I_E \leq 24 \)) on deflectors, and run a pixel-level artefact/noise filter to build \(96 \times 96\) pix cutouts; VIS+NISP colour composites are constructed with a VIS-anchored luminance scheme that preserves VIS morphology and NISP colour contrast.
+
+    A VIS-only seed classifier supplies clear positives and typical impostors, from which we curate a morphology-balanced negative set and augment scarce positives. Among the six CNNs studied initially, a modified VGG16 (GlobalAveragePooling + 256/128 dense layers with the last nine layers trainable) performs best; the training set grows from 27 seed lenses (augmented to 1809) plus 2000 negatives to a colour dataset of 30,686 images.
+
+    After three rounds of iterative fine-tuning, human grading of the top 4000 candidates ranked by the final model yields 441 Grade A/B candidate lensing systems, including 311 overlapping with the existing Q1 strong-lens catalogue, and 130 additional A/B candidates (9 As and 121 Bs) not previously reported.
+
+    Independently, the model recovers 740 out of 905 (81.8%) candidate Q1 lenses within its top 20,000 predictions, considering off-centred samples. Candidates span \( I_E \simeq 17\text{--}24 \) AB mag (median 21.3 AB mag) and are redder in \( Y_E - H_E \) than the parent population, consistent with massive early-type deflectors.
+
+    Each training iteration required a week for a small team, and the approach easily scales to future Euclid releases; future work will calibrate the selection function via lens injection, extend recall through uncertainty-aware active learning, and explore multi-scale or attention-based neural networks with fast post-hoc vetters that incorporate lens models into the classification.
+  </p>
+  <img src="{{ url_for('static', filename='images/lens4rows.png') }}" width="100%">
+
+  </div>
+</section>
+<section class="section paper-overview">
+  <h2>Paper Overview</h2>
+  <p><strong>PDF link:</strong> <a href="https://arxiv.org/pdf/2604.06648" target="_blank" rel="noopener"><u>https://arxiv.org/pdf/2604.06648</u></a></p>
+  <div class="paper-frame">
+    <iframe src="https://arxiv.org/pdf/2604.06648" title="arXiv Paper Preview"></iframe>
+  </div>
+  <div class="callout">
+  </div>
+</section>
+{% endblock %}
